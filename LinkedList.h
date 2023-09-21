@@ -102,7 +102,7 @@ void *listRemoveAt(LinkedNode *list, size_t position) {
     } else {                      // nao e o ultimo elemento
         if (nodeBefore == NULL) { // primeiro elemento
             size_t size = listSize(list, NULL);
-            LinkedNode *crawlerAfter = list->next; 
+            LinkedNode *crawlerAfter = list->next;
             LinkedNode *crawler = list;
             for (size_t i = 0; i < size; i++) {
                 crawler->data = crawlerAfter->data;
@@ -112,7 +112,7 @@ void *listRemoveAt(LinkedNode *list, size_t position) {
             }
             crawler->next = NULL;
             free(crawlerAfter);
-        } else {
+        } else { // nao e o primeiro elemento
             nodeBefore->next = nodeAfter;
             nodeCurrent->next = NULL;
             nodeCurrent->data = NULL;
@@ -189,26 +189,21 @@ void listSort(LinkedNode *list, bool (*organizer)(void *, void *)) {
     size_t size = listSize(list, NULL);
     if (size <= 1)
         return;
-
-    for (size_t j = 0; j < size - 1; j++) {
-        LinkedNode *search = listGetNodeAt(list, j); // ineficiente mas depois eu mudo
-        for (size_t i = j + 1; i < size; i++) {
-            LinkedNode *crawler = listGetNodeAt(list, i); // ineficiente mas depois eu mudo
-            if (!organizer(search->data, crawler->data))
+    for (
+        struct{LinkedNode *current;LinkedNode *before;}search = {list,NULL};
+        search.current->next!=NULL; search.before = search.current, search.current = search.current->next) {
+        for (
+            struct {LinkedNode *current; LinkedNode *before;} crawler = {search.current->next, search.current};
+            crawler.current != NULL; crawler.before = crawler.current, crawler.current = crawler.current->next) {
+            if (!organizer(search.current->data, crawler.current->data))
                 continue;
-            LinkedNode *searchBefore = NULL;
-            LinkedNode *crawlerBefore = NULL;
-            if (j) {
-                searchBefore = listGetNodeAt(list, j - 1);
-                searchBefore->next = crawler;
+            LinkedNode *tmp = crawler.current->next;
+            crawler.current->next = search.current->next;
+            search.current->next = tmp;
+            crawler.before = search.current;
+            if (search.before != NULL) {
+                search.before->next = crawler.current;
             }
-            if (j != i - 1) {
-                crawlerBefore = listGetNodeAt(list, i - 1);
-                crawlerBefore->next = search;
-            }
-            LinkedNode *tmp = crawler->next;
-            crawler->next = search->next;
-            search->next = tmp;
         }
     }
 }
