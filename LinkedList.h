@@ -18,7 +18,7 @@ void *listGetAt(LinkedNode *list, size_t position);
 LinkedNode *listGetNodeAt(LinkedNode *list, size_t position);
 size_t listSize(LinkedNode *list, bool *isCIrcular);
 void listDelete(LinkedNode **list);
-void listSort(LinkedNode *list, bool (*func)(void *, void *));
+LinkedNode *listSort(LinkedNode *list, bool (*func)(void *, void *));
 bool listSearch(LinkedNode *list, size_t *result, void *search, bool (*searchFunc)(void *, void *));
 bool listIsNodeValid(LinkedNode *node);
 
@@ -185,28 +185,71 @@ void listDelete(LinkedNode **list) {
     } while (node);
     *list = NULL;
 }
-void listSort(LinkedNode *list, bool (*organizer)(void *, void *)) {
-    size_t size = listSize(list, NULL);
-    if (size <= 1)
-        return;
-    for (
-        struct{LinkedNode *current;LinkedNode *before;}search = {list,NULL};
-        search.current->next!=NULL; search.before = search.current, search.current = search.current->next) {
-        for (
-            struct {LinkedNode *current; LinkedNode *before;} crawler = {search.current->next, search.current};
-            crawler.current != NULL; crawler.before = crawler.current, crawler.current = crawler.current->next) {
-            if (!organizer(search.current->data, crawler.current->data))
-                continue;
-            LinkedNode *tmp = crawler.current->next;
-            crawler.current->next = search.current->next;
-            search.current->next = tmp;
-            crawler.before = search.current;
-            if (search.before != NULL) {
-                search.before->next = crawler.current;
-            }
+
+LinkedNode *merge(LinkedNode *left, LinkedNode * right, bool(*organizer)(void *,  void *)) {
+    LinkedNode dummy;
+    LinkedNode *tail = &dummy;
+    dummy.next = NULL;
+
+    // Enquanto ambas as listas 'left' e 'right' não estiverem vazias
+    while (left && right) {
+        // Compara os elementos em 'left' e 'right' usando a função de comparação 'organizer'
+        if (organizer(left->data, right->data)) {
+            // Se o elemento em 'left' for menor ou igual ao elemento em 'right',
+            // adiciona 'left' à nova lista mesclada e avança 'left'
+            tail->next = left;
+            left = left->next;
         }
+        else {
+            // Caso contrário, adiciona 'right' à nova lista mesclada e avança 'right'
+            tail->next = right;
+            right = right->next;
+        }
+        // Move o ponteiro 'tail' para o último nó adicionado à nova lista mesclada
+        tail = tail->next;
     }
+    // Após o loop, uma das listas 'left' ou 'right' ainda pode conter elementos não processados
+    if (left) {
+        tail->next = left;
+    }
+    else {
+        // Adiciona todos os elementos restantes de 'right' à nova lista mesclada
+        tail->next = right;
+    }
+
+    return dummy.next;
 }
+
+
+LinkedNode *listSort(LinkedNode *list, bool (*organizer)(void *, void *)) {
+    // Se a lista estiver vazia ou tiver apenas um elemento, ela já está ordenada
+    if (!list || !list->next) {
+        return list;
+    }
+
+    // Inicializa dois ponteiros, 'slow' e 'fast', para dividir a lista ao meio
+    LinkedNode *slow = list;
+    LinkedNode *fast = list->next;
+
+    // Enquanto 'fast' não atingir o final da lista
+    while (fast && fast->next) {
+        // Move 'slow' uma posição por vez e 'fast' duas posições por vez
+        slow = slow->next;
+        fast = fast->next->next;
+    }
+
+    // 'slow' agora aponta para o meio da lista, divide a lista em duas partes
+    LinkedNode *right = slow->next;
+    slow->next = NULL;
+
+    // Classifica recursivamente as duas metades da lista
+    LinkedNode *leftSorted = listSort(list, organizer);
+    LinkedNode *rightSorted = listSort(right, organizer);
+
+    // Mescla as duas listas ordenadas usando a função 'merge'
+    return merge(leftSorted, rightSorted, organizer);
+}
+
 bool listSearch(LinkedNode *list, size_t *result, void *search, bool (*searchFunc)(void *, void *)) {
     size_t size = listSize(list, NULL);
     for (size_t i = 0; i < size; i++) {
