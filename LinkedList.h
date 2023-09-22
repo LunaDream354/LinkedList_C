@@ -249,7 +249,7 @@ void listSort(LinkedNode **list, bool (*organizer)(void *, void *)) {
     listSort(&right, organizer);
 
     // Mescla as duas listas ordenadas usando a função 'merge'
-    return merge(list, organizer);
+    merge(list, organizer);
 }
 
 bool listSearch(LinkedNode *list, size_t *result, void *search, bool (*searchFunc)(void *, void *)) {
