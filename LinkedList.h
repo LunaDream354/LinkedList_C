@@ -18,7 +18,7 @@ void *listGetAt(LinkedNode *list, size_t position);
 LinkedNode *listGetNodeAt(LinkedNode *list, size_t position);
 size_t listSize(LinkedNode *list, bool *isCIrcular);
 void listDelete(LinkedNode **list);
-void listSort(LinkedNode *list, bool (*func)(void *, void *));
+void listSort(LinkedNode **list, bool (*func)(void *, void *));
 bool listSearch(LinkedNode *list, size_t *result, void *search, bool (*searchFunc)(void *, void *));
 bool listIsNodeValid(LinkedNode *node);
 
@@ -249,7 +249,7 @@ void listSort(LinkedNode **list, bool (*organizer)(void *, void *)) {
     listSort(&right, organizer);
 
     // Mescla as duas listas ordenadas usando a função 'merge'
-    return merge(list, organizer);
+    merge(list, organizer);
 }
 
 bool listSearch(LinkedNode *list, size_t *result, void *search, bool (*searchFunc)(void *, void *)) {
