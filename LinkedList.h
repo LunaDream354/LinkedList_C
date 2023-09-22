@@ -252,22 +252,29 @@ void listSort(LinkedNode **list, bool (*organizer)(void *, void *)) {
     merge(list, organizer);
 }
 
-bool listSearch(LinkedNode *list, size_t *positions, size_t count, void *search, bool (*searchFunc)(void *, void *)) {
+bool listSearch(LinkedNode *list, void *search, bool (*searchFunc)(void *, void *)) {
     size_t position = 0; // Variável para rastrear a posição atual na lista
     bool found = false; // Variável para rastrear se pelo menos uma ocorrência foi encontrada
 
     while (list) {
         if (searchFunc(search, list->data)) {
-            if (found < count) { // Verifique se o limite de posições foi atingido
-                positions[found] = position; // Armazena a posição da ocorrência
-                found = true; // Define como true quando a primeira ocorrência é encontrada
-            }
+            found = true; // Define como true quando uma ocorrência é encontrada
+            printf("Elemento encontrado na posição %zu: ", position); // Imprime a posição da ocorrência
+            printf("%p\n", list->data); // Imprime o elemento encontrado (assumindo que o elemento é um ponteiro)
         }
         list = list->next; // Avança para o próximo nó da lista
         position++; // Incrementa a posição atual
     }
 
+    if (!found) {
+        printf("Elemento não encontrado na lista.\n"); // Imprime se nenhuma ocorrência for encontrada
+    }
+
     return found; // Retorna true se pelo menos uma ocorrência foi encontrada
+}
+
+inline bool listIsNodeValid(LinkedNode *node) {
+    return node->isUsed;
 }
 
 bool listIsNodeValid(LinkedNode *node) {
