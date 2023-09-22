@@ -18,7 +18,7 @@ void *listGetAt(LinkedNode *list, size_t position);
 LinkedNode *listGetNodeAt(LinkedNode *list, size_t position);
 size_t listSize(LinkedNode *list, bool *isCIrcular);
 void listDelete(LinkedNode **list);
-LinkedNode *listSort(LinkedNode *list, bool (*func)(void *, void *));
+void listSort(LinkedNode *list, bool (*func)(void *, void *));
 bool listSearch(LinkedNode *list, size_t *result, void *search, bool (*searchFunc)(void *, void *));
 bool listIsNodeValid(LinkedNode *node);
 
@@ -186,11 +186,13 @@ void listDelete(LinkedNode **list) {
     *list = NULL;
 }
 
-LinkedNode *merge(LinkedNode *left, LinkedNode * right, bool(*organizer)(void *,  void *)) {
+void merge(LinkedNode **list, bool(*organizer)(void *,  void *)) {
     LinkedNode dummy;
     LinkedNode *tail = &dummy;
     dummy.next = NULL;
 
+    LinkedNode *left = *list;
+    LinkedNode *right = (*list)->next;
     // Enquanto ambas as listas 'left' e 'right' não estiverem vazias
     while (left && right) {
         // Compara os elementos em 'left' e 'right' usando a função de comparação 'organizer'
@@ -217,19 +219,19 @@ LinkedNode *merge(LinkedNode *left, LinkedNode * right, bool(*organizer)(void *,
         tail->next = right;
     }
 
-    return dummy.next;
+    (*list) = dummy.next;
 }
 
 
-LinkedNode *listSort(LinkedNode *list, bool (*organizer)(void *, void *)) {
+void listSort(LinkedNode **list, bool (*organizer)(void *, void *)) {
     // Se a lista estiver vazia ou tiver apenas um elemento, ela já está ordenada
-    if (!list || !list->next) {
-        return list;
+    if (!list || !(*list)->next) {
+        return;
     }
 
     // Inicializa dois ponteiros, 'slow' e 'fast', para dividir a lista ao meio
-    LinkedNode *slow = list;
-    LinkedNode *fast = list->next;
+    LinkedNode *slow = *list;
+    LinkedNode *fast = (*list)->next;
 
     // Enquanto 'fast' não atingir o final da lista
     while (fast && fast->next) {
@@ -243,11 +245,11 @@ LinkedNode *listSort(LinkedNode *list, bool (*organizer)(void *, void *)) {
     slow->next = NULL;
 
     // Classifica recursivamente as duas metades da lista
-    LinkedNode *leftSorted = listSort(list, organizer);
-    LinkedNode *rightSorted = listSort(right, organizer);
+    listSort(list, organizer);
+    listSort(&right, organizer);
 
     // Mescla as duas listas ordenadas usando a função 'merge'
-    return merge(leftSorted, rightSorted, organizer);
+    return merge(list, organizer);
 }
 
 bool listSearch(LinkedNode *list, size_t *result, void *search, bool (*searchFunc)(void *, void *)) {
