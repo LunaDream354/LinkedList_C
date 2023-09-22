@@ -19,7 +19,7 @@ LinkedNode *listGetNodeAt(LinkedNode *list, size_t position);
 size_t listSize(LinkedNode *list, bool *isCIrcular);
 void listDelete(LinkedNode **list);
 void listSort(LinkedNode **list, bool (*func)(void *, void *));
-bool listSearch(LinkedNode *list, size_t *result, void *search, bool (*searchFunc)(void *, void *));
+bool listSearch(LinkedNode *list, size_t *positions, size_t count, void *search, bool (*searchFunc)(void *, void *));
 bool listIsNodeValid(LinkedNode *node);
 
 LinkedNode *listCreate(void *data, bool initialized) {
@@ -252,22 +252,19 @@ void listSort(LinkedNode **list, bool (*organizer)(void *, void *)) {
     merge(list, organizer);
 }
 
-bool listSearch(LinkedNode *list, void *search, bool (*searchFunc)(void *, void *)) {
+bool listSearch(LinkedNode *list, size_t *positions, size_t count, void *search, bool (*searchFunc)(void *, void *)) {
     size_t position = 0; // Variável para rastrear a posição atual na lista
     bool found = false; // Variável para rastrear se pelo menos uma ocorrência foi encontrada
-
+    size_t positionsPosition = 0;
     while (list) {
         if (searchFunc(search, list->data)) {
-            found = true; // Define como true quando uma ocorrência é encontrada
-            printf("Elemento encontrado na posição %zu: ", position); // Imprime a posição da ocorrência
-            printf("%p\n", list->data); // Imprime o elemento encontrado (assumindo que o elemento é um ponteiro)
+            if (found < count) { // Verifique se o limite de posições foi atingido
+                positions[positionsPosition++] = position; // Armazena a posição da ocorrência
+                found = true; // Define como true quando a primeira ocorrência é encontrada
+            }
         }
         list = list->next; // Avança para o próximo nó da lista
         position++; // Incrementa a posição atual
-    }
-
-    if (!found) {
-        printf("Elemento não encontrado na lista.\n"); // Imprime se nenhuma ocorrência for encontrada
     }
 
     return found; // Retorna true se pelo menos uma ocorrência foi encontrada
