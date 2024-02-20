@@ -19,9 +19,9 @@ void *linked_remove_at(Linked_head *list, size_t position);
 void *linked_get_at(Linked_head *list, size_t position);
 void linked_delete(Linked_head **list);
 Linked_node *linked_get_node_at(Linked_head *list, size_t position);
-void linked_sort(Linked_head **list, bool (*func)(void *, void *));
-bool linked_search(Linked_head *list, size_t *positions, size_t count,
-                   void *search, bool (*searchFunc)(void *, void *));
+void linked_sort(Linked_head *list, bool (*organizer)(void *, void *));
+bool linked_search(Linked_head *list, Linked_head **positions, void *search,
+                   bool (*searchFunc)(void *, void *));
 bool linked_is_node_valid(Linked_node *node);
 
 #endif

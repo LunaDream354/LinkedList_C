@@ -1,7 +1,10 @@
 #include "linked_list.h"
 
 #include <stdint.h>
-inline Linked_node *linked_node_create(void *data);
+
+void linked_node_set_next(Linked_node *node, Linked_node *next);
+Linked_node *linked_node_create(void *data);
+void linked_sort_internal(Linked_node *node, bool (*organizer)(void *, void *));
 
 Linked_head *linked_create(void *data, bool initialized) {
     Linked_head *head = (Linked_head *)malloc(sizeof(Linked_head));
@@ -19,7 +22,7 @@ Linked_head *linked_push(Linked_head *list, void *data) {
     if (!list->size) {
         list->node = node;
     } else {
-		linked_node_set_next(node->next,list->node);
+        linked_node_set_next(node, list->node);
         list->node = node;
     }
     list->size++;
@@ -36,8 +39,8 @@ Linked_head *linked_add_at(Linked_head *list, void *data, size_t position) {
         node_next = node_next->next;
     }
     Linked_node *node = linked_node_create(data);
-    node_current->next = node;
-    node->next = node_next;
+    linked_node_set_next(node_current, node);
+    linked_node_set_next(node, node_next);
     return list;
 }
 
@@ -51,7 +54,7 @@ void *linked_pop(Linked_head *list) {
         node_last = node_last->next;
     }
     data = node_last->data;
-    node_penult->next = NULL;
+    linked_node_set_next(node_penult, NULL);
     free(node_last);
     return data;
 }
@@ -65,14 +68,15 @@ void *linked_remove_at(Linked_head *list, size_t position) {
         node_current = node_after;
         node_after = node_after->next;
     }
-    if (node_before != NULL) node_before->next = node_after;
+    if (node_before != NULL) linked_node_set_next(node_before, node_after);
     void *data = node_current->data;
 
     if (node_after == NULL) {       // ultimo elemento
         if (node_before == NULL) {  // unico elemento
-            free(list->node) list->node = NULL;
+            free(list->node);
+            list->node = NULL;
         } else {  // nao e o unico elemento
-            node_before->next = NULL;
+            linked_node_set_next(node_before, NULL);
             free(node_current);
         }
     } else {                        // nao e o ultimo elemento
@@ -81,8 +85,8 @@ void *linked_remove_at(Linked_head *list, size_t position) {
             list->node = list->node->next;
             free(node);
         } else {  // nao e o primeiro elemento
-            node_before->next = node_after;
-            node_current->next = NULL;
+            linked_node_set_next(node_before, node_after);
+            linked_node_set_next(node_current, NULL);
             node_current->data = NULL;
             free(node_current);
         }
@@ -115,42 +119,47 @@ void linked_delete(Linked_head **list) {
     *list = NULL;
 }
 
-void merge(Linked_node **list, bool (*organizer)(void *, void *)) {
+void merge(Linked_node **node, bool (*organizer)(void *, void *)) {
     Linked_node dummy;
     Linked_node *tail = &dummy;
-    dummy.next = NULL;
+    linked_node_set_next(&dummy, NULL);
 
-    Linked_node *left = *list;
-    Linked_node *right = (*list)->next;
+    Linked_node *left = *node;
+    Linked_node *right = (*node)->next;
     while (left && right) {
         if (organizer(left->data, right->data)) {
-            tail->next = left;
+            linked_node_set_next(tail, left);
             left = left->next;
         } else {
-            tail->next = right;
+            linked_node_set_next(tail, right);
             right = right->next;
         }
         tail = tail->next;
     }
     if (left) {
-        tail->next = left;
+        linked_node_set_next(tail, left);
     } else {
-        tail->next = right;
+        linked_node_set_next(tail, right);
     }
 
-    (*list) = dummy.next;
+    (*node) = dummy.next;
 }
 
-void linked_sort(Linked_head **list, bool (*organizer)(void *, void *)) {
+void linked_sort(Linked_head *list, bool (*organizer)(void *, void *)) {
+	linked_sort_internal(list->node,organizer);
+}
+
+void linked_sort_internal(Linked_node *list,
+                          bool (*organizer)(void *, void *)) {
     // Se a lista estiver vazia ou tiver apenas um elemento, ela já está
     // ordenada
-    if (list == NULL || !(*list)->next) {
+    if (list == NULL || list->next == NULL) {
         return;
     }
 
     // Inicializa dois ponteiros, 'slow' e 'fast', para dividir a lista ao meio
-    Linked_node *slow = *list;
-    Linked_node *fast = (*list)->next;
+    Linked_node *slow = list->next;
+    Linked_node *fast = list->next;
 
     // Enquanto 'fast' não atingir o final da lista
     while (fast && fast->next) {
@@ -161,38 +170,30 @@ void linked_sort(Linked_head **list, bool (*organizer)(void *, void *)) {
 
     // 'slow' agora aponta para o meio da lista, divide a lista em duas partes
     Linked_node *right = slow->next;
-    slow->next = NULL;
+    linked_node_set_next(slow, NULL);
 
     // Classifica recursivamente as duas metades da lista
-    linked_sort(list, organizer);
-    linked_sort(&right, organizer);
+    linked_sort_internal(list, organizer);
+    linked_sort_internal(right, organizer);
 
     // Mescla as duas listas ordenadas usando a função 'merge'
-    merge(list, organizer);
+    merge(&list, organizer);
 }
 
-bool linked_search(Linked_head *list, size_t *positions, size_t count,
-                   void *search, bool (*searchFunc)(void *, void *)) {
-    size_t position = 0;  // Variável para rastrear a posição atual na lista
-    bool found = false;  // Variável para rastrear se pelo menos uma ocorrência
-                         // foi encontrada
-    size_t positionsPosition = 0;
+bool linked_search(Linked_head *list, Linked_head **positions, void *search,
+                   bool (*searchFunc)(void *, void *)) {
     Linked_node *node_current = list->node;
-    while (list) {
-        if (searchFunc(search, list->node->data)) {
-            if (found <
-                count) {  // Verifique se o limite de posições foi atingido
-                positions[positionsPosition++] =
-                    position;  // Armazena a posição da ocorrência
-                found = true;  // Define como true quando a primeira ocorrência
-                               // é encontrada
-            }
+    if (positions != NULL) *positions = linked_create(NULL, false);
+    while (node_current != NULL) {
+        if (searchFunc(search, node_current->data)) {
+            if (positions != NULL)
+                linked_push(*positions, node_current->data);
+            else
+                return true;
         }
-        list = list->next;  // Avança para o próximo nó da lista
-        position++;         // Incrementa a posição atual
+        node_current = node_current->next;  // Avança para o próximo nó da lista
     }
-
-    return found;  // Retorna true se pelo menos uma ocorrência foi encontrada
+    return false;
 }
 
 inline Linked_node *linked_node_create(void *data) {
@@ -200,6 +201,7 @@ inline Linked_node *linked_node_create(void *data) {
         (Linked_node *)malloc(sizeof(Linked_node));  // this is the node
     node->data = data;
     linked_node_set_next(node, NULL);
+	return node;
 }
 
 inline void linked_node_set_next(Linked_node *node, Linked_node *next) {
