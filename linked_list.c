@@ -1,13 +1,14 @@
 #include "linked_list.h"
 
-inline Linked_node* linked_node_create(void *data);
+#include <stdint.h>
+inline Linked_node *linked_node_create(void *data);
 
 Linked_head *linked_create(void *data, bool initialized) {
     Linked_head *head = (Linked_head *)malloc(sizeof(Linked_head));
-    if(!initialized || data != NULL){
+    if (!initialized || data != NULL) {
         head->node = NULL;
         head->size = 0;
-    }else{
+    } else {
         head->node = linked_node_create(data);
         head->size = 1;
     }
@@ -18,7 +19,7 @@ Linked_head *linked_push(Linked_head *list, void *data) {
     if (!list->size) {
         list->node = node;
     } else {
-        node->next = list->node;
+		linked_node_set_next(node->next,list->node);
         list->node = node;
     }
     list->size++;
@@ -28,113 +29,84 @@ Linked_head *linked_push(Linked_head *list, void *data) {
 Linked_head *linked_add_at(Linked_head *list, void *data, size_t position) {
     if (!position) return linked_push(list, data);
 
-    Linked_node *nodeCurrent = list->node;
-    Linked_node *nodeNext = list->node;
+    Linked_node *node_current = list->node;
+    Linked_node *node_next = list->node;
     for (size_t i = 0; i < position; i++) {
-        nodeCurrent = nodeNext;
-        nodeNext = nodeNext->next;
+        node_current = node_next;
+        node_next = node_next->next;
     }
     Linked_node *node = linked_node_create(data);
-    nodeCurrent->next = node;
-    node->next = nodeNext;
+    node_current->next = node;
+    node->next = node_next;
     return list;
 }
 
 void *linked_pop(Linked_head *list) {
     if (!list->size) return NULL;
-    Linked_node *nodeLast = list->node;
-    Linked_node *nodePenult = list->node;
+    Linked_node *node_last = list->node;
+    Linked_node *node_penult = list->node;
     void *data = NULL;
-    while (nodeLast->next != NULL) {
-        nodePenult = nodeLast;
-        nodeLast = nodeLast->next;
+    while (node_last->next != NULL) {
+        node_penult = node_last;
+        node_last = node_last->next;
     }
-    data = nodeLast->data;
-    nodePenult->next = NULL;
-    if (nodeLast == nodePenult)
-        nodeLast->isUsed = false;
-    else
-        free(nodeLast);
+    data = node_last->data;
+    node_penult->next = NULL;
+    free(node_last);
     return data;
 }
 void *linked_remove_at(Linked_head *list, size_t position) {
-    if (!list->isUsed) return NULL;
-    Linked_node *nodeBefore = NULL;
-    Linked_node *nodeCurrent = NULL;
-    Linked_node *nodeAfter = list;
+    if (!list->size || position >= list->size) return NULL;
+    Linked_node *node_before = NULL;
+    Linked_node *node_current = NULL;
+    Linked_node *node_after = list->node;
     for (size_t i = 0; i < position + 1; i++) {
-        nodeBefore = nodeCurrent;
-        nodeCurrent = nodeAfter;
-        nodeAfter = nodeAfter->next;
+        node_before = node_current;
+        node_current = node_after;
+        node_after = node_after->next;
     }
-    if (nodeBefore != NULL) nodeBefore->next = nodeAfter;
-    void *data = nodeCurrent->data;
+    if (node_before != NULL) node_before->next = node_after;
+    void *data = node_current->data;
 
-    if (nodeAfter == NULL) {       // ultimo elemento
-        if (nodeBefore == NULL) {  // unico elemento
-            nodeCurrent->data = NULL;
-            nodeCurrent->isUsed = false;
+    if (node_after == NULL) {       // ultimo elemento
+        if (node_before == NULL) {  // unico elemento
+            free(list->node) list->node = NULL;
         } else {  // nao e o unico elemento
-            nodeBefore->next = NULL;
-            free(nodeCurrent);
+            node_before->next = NULL;
+            free(node_current);
         }
-    } else {                       // nao e o ultimo elemento
-        if (nodeBefore == NULL) {  // primeiro elemento
-            size_t size = linked_size(list, NULL);
-            Linked_node *crawlerAfter = list->next;
-            Linked_node *crawler = list;
-            for (size_t i = 0; i < size; i++) {
-                crawler->data = crawlerAfter->data;
-                crawler->next = crawlerAfter->next;
-                crawler = crawlerAfter;
-                crawlerAfter = crawlerAfter->next;
-            }
-            crawler->next = NULL;
-            free(crawlerAfter);
+    } else {                        // nao e o ultimo elemento
+        if (node_before == NULL) {  // primeiro elemento
+            Linked_node *node = list->node;
+            list->node = list->node->next;
+            free(node);
         } else {  // nao e o primeiro elemento
-            nodeBefore->next = nodeAfter;
-            nodeCurrent->next = NULL;
-            nodeCurrent->data = NULL;
-            free(nodeCurrent);
+            node_before->next = node_after;
+            node_current->next = NULL;
+            node_current->data = NULL;
+            free(node_current);
         }
     }
+    list->size--;
     return data;
 }
 void *linked_get_at(Linked_head *list, size_t position) {
-    Linked_node *node = list;
+    if (position >= list->size) return NULL;
+    Linked_node *node = list->node;
     for (size_t i = 0; i < position; i++) {
         node = node->next;
     }
     return node->data;
 }
-size_t linked_size(Linked_head *list, bool *isCircular) {
-    bool isCircularTemp = false;
-    bool *isCirculatTempPtr = &isCircularTemp;
-    bool **isCircularPtr = &isCirculatTempPtr;
-    if (isCircular) isCircularPtr = &isCircular;
-    if (!list->isUsed) {
-        (**isCircularPtr) = false;
-        return 0;
-    }
 
-    size_t size = 1;
-    Linked_node *nodeStart = list;
-    Linked_node *node = nodeStart;
-    while (node != NULL && node->next != NULL && node->next != nodeStart) {
-        size++;
-        node = node->next;
-    }
-    (**isCircularPtr) = node->next != NULL;
-    return size;
-}
 void linked_delete(Linked_head **list) {
-    if (!(*list)->next) {
+    if ((*list)->node == NULL) {
         free(list);
-        list = NULL;
+        *list = NULL;
         return;
     }
-    Linked_node *node = *list;
-    Linked_node *nodeNext = (*list)->next;
+    Linked_node *node = (*list)->node;
+    Linked_node *nodeNext = (*list)->node->next;
     do {
         free(node);
         node = nodeNext->next;
@@ -169,10 +141,10 @@ void merge(Linked_node **list, bool (*organizer)(void *, void *)) {
     (*list) = dummy.next;
 }
 
-void linked_sort(Linked_node **list, bool (*organizer)(void *, void *)) {
+void linked_sort(Linked_head **list, bool (*organizer)(void *, void *)) {
     // Se a lista estiver vazia ou tiver apenas um elemento, ela já está
     // ordenada
-    if (!list || !(*list)->next) {
+    if (list == NULL || !(*list)->next) {
         return;
     }
 
@@ -199,14 +171,15 @@ void linked_sort(Linked_node **list, bool (*organizer)(void *, void *)) {
     merge(list, organizer);
 }
 
-bool linked_search(Linked_node *list, size_t *positions, size_t count,
-                 void *search, bool (*searchFunc)(void *, void *)) {
+bool linked_search(Linked_head *list, size_t *positions, size_t count,
+                   void *search, bool (*searchFunc)(void *, void *)) {
     size_t position = 0;  // Variável para rastrear a posição atual na lista
     bool found = false;  // Variável para rastrear se pelo menos uma ocorrência
                          // foi encontrada
     size_t positionsPosition = 0;
+    Linked_node *node_current = list->node;
     while (list) {
-        if (searchFunc(search, list->data)) {
+        if (searchFunc(search, list->node->data)) {
             if (found <
                 count) {  // Verifique se o limite de posições foi atingido
                 positions[positionsPosition++] =
@@ -222,12 +195,13 @@ bool linked_search(Linked_node *list, size_t *positions, size_t count,
     return found;  // Retorna true se pelo menos uma ocorrência foi encontrada
 }
 
-inline bool linked_is_node_valid(Linked_node *node) { return node->isUsed; }
-
-bool linked_is_node_valid(Linked_node *node) { return node->isUsed; }
-
-inline Linked_node* linked_node_create(void *data){
-    Linked_node *node = (Linked_node*)malloc(sizeof(Linked_node));
+inline Linked_node *linked_node_create(void *data) {
+    Linked_node *node =
+        (Linked_node *)malloc(sizeof(Linked_node));  // this is the node
     node->data = data;
-    node->next = NULL;
+    linked_node_set_next(node, NULL);
+}
+
+inline void linked_node_set_next(Linked_node *node, Linked_node *next) {
+    *(Linked_node **)(&node->next) = next;
 }
