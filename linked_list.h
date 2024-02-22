@@ -30,5 +30,5 @@ Linked_node *linked_get_node_at(Linked_head *list, size_t position);
 Linked_head *linked_sort(Linked_head *list, bool (*organizer)(void *, void *));
 long linked_search(Linked_head *list, Linked_head **positions, void *search,
                    bool (*searchFunc)(void *, void *));
-
+Linked_head *linked_merge(Linked_head *list1, Linked_head *list2);
 #endif

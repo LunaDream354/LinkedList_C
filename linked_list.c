@@ -6,10 +6,10 @@ extern int errno;
 
 void linked_node_set_next(Linked_node *node, Linked_node *next);
 Linked_node *linked_node_create(void *data);
-void linked_sort_internal(Linked_node *node, bool (*organizer)(void *, void *));
+Linked_head *linked_sort_internal(Linked_head *list, bool (*organizer)(void *, void *));
 void linked_list_size_edit(Linked_head *list, size_t value);
 void linked_list_node_set(Linked_head *list, Linked_node *node);
-
+Linked_head* linked_merge_sort(Linked_head **list_left,Linked_head **list_right, bool (*organizer)(void *, void *));
 Linked_head *linked_create(void *data, bool initialized) {
     Linked_head *head = (Linked_head *)calloc(1, sizeof(Linked_head));
     if (head == NULL) {
@@ -172,11 +172,12 @@ void linked_delete(Linked_head **list) {
     }
     Linked_node *node = (*list)->node;
     Linked_node *nodeNext = (*list)->node->next;
-    do {
-        free(node);
-        node = nodeNext->next;
+    
+    while(node) {
         nodeNext = node->next;
-    } while (node);
+        free(node);
+        node = nodeNext;
+    }
     *list = NULL;
 }
 
@@ -194,31 +195,32 @@ Linked_node *linked_get_node_at(Linked_head *list, size_t position) {
     return result;
 }
 
-void merge(Linked_node **node, bool (*organizer)(void *, void *)) {
-    Linked_node dummy;
-    Linked_node *tail = &dummy;
-    linked_node_set_next(&dummy, NULL);
-
-    Linked_node *left = *node;
-    Linked_node *right = (*node)->next;
-    while (left && right) {
+Linked_head* linked_merge_sort(Linked_head **list_left,Linked_head **list_right, bool (*organizer)(void *, void *)) {
+    Linked_head *list_result = linked_create(NULL,false);
+    Linked_node *left = (*list_left)->node;
+    Linked_node *right = (*list_right)->node;
+    while (left != NULL && right != NULL) {
         if (organizer(left->data, right->data)) {
-            linked_node_set_next(tail, left);
+            linked_append(list_result,left->data);
             left = left->next;
         } else {
-            linked_node_set_next(tail, right);
+            linked_append(list_result,right->data);
             right = right->next;
         }
-        tail = tail->next;
     }
-    if (left) {
-        linked_node_set_next(tail, left);
-    } else {
-        linked_node_set_next(tail, right);
+    while (left != NULL){
+        linked_append(list_result,left->data);
+        left = left->next;
     }
-
-    (*node) = dummy.next;
+    while(right != NULL){
+        linked_append(list_result,right->data);
+        right = right->next;
+    }
+    linked_delete(list_left);
+    linked_delete(list_right);
+    return list_result;
 }
+
 
 Linked_head *linked_sort(Linked_head *list, bool (*organizer)(void *, void *)) {
     if (list == NULL) {
@@ -229,38 +231,39 @@ Linked_head *linked_sort(Linked_head *list, bool (*organizer)(void *, void *)) {
         errno = LINKED_ERROR_PARAM_NULL;
         return NULL;
     }
-    linked_sort_internal(list->node, organizer);
-    return list;
+    return linked_sort_internal(list, organizer);
 }
 
-void linked_sort_internal(Linked_node *node,
+Linked_head *linked_sort_internal(Linked_head *list,
                           bool (*organizer)(void *, void *)) {
     // Se a lista estiver vazia ou tiver apenas um elemento, ela já está
     // ordenada
-    if (node->next == NULL) {
-        return;
+    if (list->node == NULL || list->size <= 1) {
+        return list;
     }
-
+    Linked_head *left_list = linked_create(NULL,false);
+    Linked_head *right_list = linked_create(NULL,false);
+    
     // Inicializa dois ponteiros, 'slow' e 'fast', para dividir a lista ao meio
-    Linked_node *slow = node;
-    Linked_node *fast = node;
+    Linked_node *slow = list->node;
+    Linked_node *fast = list->node;
 
     // Enquanto 'fast' não atingir o final da lista
-    while (fast && fast->next) {
+    while (fast != NULL && fast->next != NULL) {
+        linked_append(left_list,slow->data);
         // Move 'slow' uma posição por vez e 'fast' duas posições por vez
         slow = slow->next;
         fast = fast->next->next;
     }
-
-    // 'slow' agora aponta para o meio da lista, divide a lista em duas partes
-    Linked_node *right = slow->next;
-    linked_node_set_next(slow, NULL);
-
+    while (slow != NULL){
+        linked_append(right_list,slow->data);
+        slow = slow->next;
+    }
     // Classifica recursivamente as duas metades da lista
-    linked_sort_internal(node, organizer);
-    linked_sort_internal(right, organizer);
+    left_list = linked_sort_internal(left_list, organizer);
+    right_list = linked_sort_internal(right_list, organizer);
     // Mescla as duas listas ordenadas usando a função 'merge'
-    merge(&node, organizer);
+    return linked_merge_sort(&left_list, &right_list,organizer);
 }
 
 long linked_search(Linked_head *list, Linked_head **positions, void *search,
@@ -287,6 +290,25 @@ long linked_search(Linked_head *list, Linked_head **positions, void *search,
         node_current = node_current->next;  // Avança para o próximo nó da lista
     }
     return -1;
+}
+
+Linked_head *linked_merge(Linked_head *list1, Linked_head *list2){
+    if (list1 == NULL || list2 == NULL) {
+        errno = LINKED_ERROR_LIST_NULL;
+        return NULL;
+    }
+    Linked_head *list_new = linked_create(NULL,false);
+    Linked_node *crawler = list1->node;
+    while(crawler != NULL){
+        linked_append(list_new,crawler->data);
+        crawler = crawler->next;
+    }
+    crawler = list2->node;
+    while(crawler != NULL){
+        linked_append(list_new,crawler->data);
+        crawler = crawler->next;
+    }
+    return list_new;
 }
 
 inline Linked_node *linked_node_create(void *data) {
