@@ -4,49 +4,55 @@
 #include <stdint.h>
 extern int errno;
 
-void linked_node_set_next(Linked_node *node, Linked_node *next);
-Linked_node *linked_node_create(void *data);
+void linked_node_set_next(const Linked_node *node, Linked_node *next);
+Linked_node *linked_node_create(const void *data);
 Linked_head *linked_sort_internal(Linked_head *list,
-                                  bool (*organizer)(void *, void *));
-void linked_list_size_edit(Linked_head *list, size_t value);
-void linked_list_node_set(Linked_head *list, Linked_node *node);
+                                  bool (*organizer)(const void *, const void *));
+void linked_list_size_edit(const Linked_head *list, size_t value);
+void linked_list_node_set(const Linked_head *list, Linked_node *node);
 Linked_head *linked_merge_sort(Linked_head **list_left,
                                Linked_head **list_right,
-                               bool (*organizer)(void *, void *));
+                               bool (*organizer)(const void *, const void *));
 
-Linked_head *linked_create(void) {
-    Linked_head *head = (Linked_head *)calloc(1, sizeof(Linked_head));
-    if (head == NULL) {
-        errno = LINKED_ERROR_NO_MEMORY;
-        return NULL;
+bool linked_create(Linked_head **list) {
+    if (list == NULL || *list != NULL) {
+        errno = EINVAL;
+        return false;
     }
-    return head;
+    *list = (Linked_head *)calloc(1, sizeof(Linked_head));
+    if (*list == NULL) {
+        errno = ENOMEM;
+        return false;
+    }
+    return true;
 }
-Linked_head *linked_push(Linked_head *list, void *data) {
+bool linked_push(const Linked_head *list, const void *data) {
     if (list == NULL) {
-        errno = LINKED_ERROR_LIST_NULL;
-        return NULL;
+        errno = EINVAL;
+        return false;
     }
     Linked_node *node = linked_node_create(data);
-
+    if (node == NULL) {
+        return false;
+    }
     if (list->size) {
         linked_node_set_next(node, list->node);
     }
     linked_list_node_set(list, node);
     linked_list_size_edit(list, list->size + 1);
-    return list;
+    return true;
 }
 
-Linked_head *linked_add_at(Linked_head *list, void *data, size_t position) {
+bool linked_add_at(const Linked_head *list, const void *data, size_t position) {
     if (list == NULL) {
-        errno = LINKED_ERROR_LIST_NULL;
-        return NULL;
+        errno = EINVAL;
+        return false;
     }
     if (!position) return linked_push(list, data);
     if (position == list->size) return linked_append(list, data);
     if (position > list->size) {
-        errno = LINKED_ERROR_OUT_BOUNDS;
-        return NULL;
+        errno = EFAULT;
+        return false;
     }
     Linked_node *node_current = list->node;
     Linked_node *node_next = list->node;
@@ -55,55 +61,60 @@ Linked_head *linked_add_at(Linked_head *list, void *data, size_t position) {
         node_next = node_next->next;
     }
     Linked_node *node = linked_node_create(data);
+    if (node == NULL) return false;
     linked_node_set_next(node_current, node);
     linked_node_set_next(node, node_next);
-    return list;
+    return true;
 }
 
-Linked_head *linked_append(Linked_head *list, void *data) {
+bool linked_append(const Linked_head *list, const void *data) {
     if (list == NULL) {
-        errno = LINKED_ERROR_LIST_NULL;
-        return NULL;
+        errno = EINVAL;
+        return false;
     }
-    Linked_node *crawler;
-    for (crawler = list->node; crawler != NULL && crawler->next != NULL;
-         crawler = crawler->next)
-        ;
+
+    Linked_node *crawler = NULL;
+    if(list->size != 0)
+        for (crawler = list->node; crawler->next != NULL;
+            crawler = crawler->next);
+    Linked_node *node = linked_node_create(data);
+    if (node == NULL) return false;
     if (crawler == NULL)
-        linked_list_node_set(list, linked_node_create(data));
+        linked_list_node_set(list, node);
     else
-        linked_node_set_next(crawler, linked_node_create(data));
+        linked_node_set_next(crawler, node);
+
     linked_list_size_edit(list, list->size + 1);
-    return list;
+    return true;
 }
 
-void *linked_pop(Linked_head *list) {
+bool linked_pop(const Linked_head *list, void **data) {
     if (list == NULL) {
-        errno = LINKED_ERROR_LIST_NULL;
-        return NULL;
+        errno = EINVAL;
+        return false;
     }
     if (!list->size) return NULL;
     Linked_node *node_last = list->node;
     Linked_node *node_penult = list->node;
-    void *data = NULL;
     while (node_last->next != NULL) {
         node_penult = node_last;
         node_last = node_last->next;
     }
-    data = node_last->data;
+    if (data != NULL) *data = node_last->data;
     linked_node_set_next(node_penult, NULL);
     free(node_last);
 
     linked_list_size_edit(list, list->size - 1);
-    return data;
+
+    return true;
 }
-void *linked_remove_at(Linked_head *list, size_t position) {
+bool linked_remove_at(const Linked_head *list, size_t position, void **data) {
     if (list == NULL) {
-        errno = LINKED_ERROR_LIST_NULL;
+        errno = EINVAL;
         return NULL;
     }
     if (position >= list->size) {
-        errno = LINKED_ERROR_OUT_BOUNDS;
+        errno = EFAULT;
         return NULL;
     }
     if (!list->size) return NULL;
@@ -116,7 +127,7 @@ void *linked_remove_at(Linked_head *list, size_t position) {
         node_after = node_after->next;
     }
     if (node_before != NULL) linked_node_set_next(node_before, node_after);
-    void *data = node_current->data;
+    if(data!=NULL) *data = node_current->data;
 
     if (node_after == NULL) {       // ultimo elemento
         if (node_before == NULL) {  // unico elemento
@@ -142,25 +153,26 @@ void *linked_remove_at(Linked_head *list, size_t position) {
     linked_list_size_edit(list, list->size - 1);
     return data;
 }
-void *linked_get_at(Linked_head *list, size_t position) {
+bool linked_get_at(const Linked_head *list, size_t position, void **data) {
     if (list == NULL) {
-        errno = LINKED_ERROR_LIST_NULL;
+        errno = EINVAL;
         return NULL;
     }
     if (position >= list->size) {
-        errno = LINKED_ERROR_OUT_BOUNDS;
+        errno = EINVAL;
         return NULL;
     }
     Linked_node *node = list->node;
     for (size_t i = 0; i < position; i++) {
         node = node->next;
     }
-    return node->data;
+    *data = node->data;
+    return true;
 }
 
 void linked_delete(Linked_head **list) {
     if (*list == NULL || list == NULL) {
-        errno = LINKED_ERROR_LIST_NULL;
+        errno = EINVAL;
         return;
     }
     if ((*list)->node == NULL) {
@@ -179,24 +191,25 @@ void linked_delete(Linked_head **list) {
     *list = NULL;
 }
 
-Linked_node *linked_get_node_at(Linked_head *list, size_t position) {
+bool linked_get_node_at(const Linked_head *list, size_t position, Linked_node **node) {
     if (list == NULL) {
-        errno = LINKED_ERROR_LIST_NULL;
-        return NULL;
+        errno = EINVAL;
+        return false;
     }
     if (position >= list->size) {
-        errno = LINKED_ERROR_OUT_BOUNDS;
-        return NULL;
+        errno = EINVAL;
+        return false;
     }
-    Linked_node *result = list->node;
-    for (size_t i = 0; i < position; i++) result = result->next;
-    return result;
+    *node = list->node;
+    for (size_t i = 0; i < position; i++) *node = (*node)->next;
+    return true;
 }
 
 Linked_head *linked_merge_sort(Linked_head **list_left,
                                Linked_head **list_right,
-                               bool (*organizer)(void *, void *)) {
-    Linked_head *list_result = linked_create();
+                               bool (*organizer)(const void *, const void *)) {
+    Linked_head *list_result = NULL;
+    linked_create(&list_result);
     Linked_node *left = (*list_left)->node;
     Linked_node *right = (*list_right)->node;
     while (left != NULL && right != NULL) {
@@ -222,13 +235,13 @@ Linked_head *linked_merge_sort(Linked_head **list_left,
 }
 
 Linked_head *linked_sort(Linked_head **list,
-                         bool (*organizer)(void *, void *)) {
+                         bool (*organizer)(const void *, const void *)) {
     if (list == NULL) {
-        errno = LINKED_ERROR_LIST_NULL;
+        errno = EINVAL;
         return NULL;
     }
     if (organizer == NULL) {
-        errno = LINKED_ERROR_PARAM_NULL;
+        errno = EINVAL;
         return NULL;
     }
     *list = linked_sort_internal(*list, organizer);
@@ -236,15 +249,17 @@ Linked_head *linked_sort(Linked_head **list,
 }
 
 Linked_head *linked_sort_internal(Linked_head *list,
-                                  bool (*organizer)(void *, void *)) {
+                                  bool (*organizer)(const void *, const void *)) {
     // Se a lista estiver vazia ou tiver apenas um elemento, ela já está
     // ordenada
     if (list->node == NULL || list->size <= 1) {
         return list;
     }
-    Linked_head *left_list = linked_create();
-    Linked_head *right_list = linked_create();
+    Linked_head *left_list = NULL;
+    Linked_head *right_list = NULL;
 
+    linked_create(&left_list);
+    linked_create(&right_list);
     // Inicializa dois ponteiros, 'slow' e 'fast', para dividir a lista ao meio
     Linked_node *slow = list->node;
     Linked_node *fast = list->node;
@@ -268,18 +283,18 @@ Linked_head *linked_sort_internal(Linked_head *list,
     return linked_merge_sort(&left_list, &right_list, organizer);
 }
 
-long linked_search(Linked_head *list, Linked_head **positions, void *search,
-                   bool (*searchFunc)(void *, void *)) {
+long linked_search(const Linked_head *list, Linked_head **positions,
+                   const void *search, bool (*searchFunc)(const void *, const void *)) {
     if (list == NULL) {
-        errno = LINKED_ERROR_LIST_NULL;
+        errno = EINVAL;
         return -1;
     }
     if (search == NULL) {
-        errno = LINKED_ERROR_PARAM_NULL;
+        errno = EINVAL;
         return -1;
     }
     Linked_node *node_current = list->node;
-    if (positions != NULL) *positions = linked_create();
+    if (positions != NULL) linked_create(positions);
     long position_current = -1;
     while (node_current != NULL) {
         position_current++;
@@ -294,12 +309,13 @@ long linked_search(Linked_head *list, Linked_head **positions, void *search,
     return -1;
 }
 
-Linked_head *linked_merge(Linked_head *list1, Linked_head *list2) {
+Linked_head *linked_merge(const Linked_head *list1, const Linked_head *list2) {
     if (list1 == NULL || list2 == NULL) {
-        errno = LINKED_ERROR_LIST_NULL;
+        errno = EINVAL;
         return NULL;
     }
-    Linked_head *list_new = linked_create();
+    Linked_head *list_new;
+    linked_create(&list_new);
     Linked_node *crawler = list1->node;
     while (crawler != NULL) {
         linked_append(list_new, crawler->data);
@@ -313,24 +329,25 @@ Linked_head *linked_merge(Linked_head *list1, Linked_head *list2) {
     return list_new;
 }
 
-inline Linked_node *linked_node_create(void *data) {
+inline Linked_node *linked_node_create(const void *data) {
     Linked_node *node = (Linked_node *)malloc(sizeof(Linked_node));
     if (node == NULL) {
-        errno = LINKED_ERROR_NO_MEMORY;
+        errno = ENOMEM;
         return NULL;
     }
-    node->data = data;
+    node->data = (void *)data;
     linked_node_set_next(node, NULL);
     return node;
 }
 
-inline void linked_node_set_next(Linked_node *node, Linked_node *next) {
+inline void linked_node_set_next(const Linked_node *node,
+                                 Linked_node *next) {
     *(Linked_node **)(&node->next) = next;
 }
 
-inline void linked_list_size_edit(Linked_head *list, size_t value) {
+inline void linked_list_size_edit(const Linked_head *list, size_t value) {
     *(size_t *)(&list->size) = value;
 }
-inline void linked_list_node_set(Linked_head *list, Linked_node *node) {
+inline void linked_list_node_set(const Linked_head *list, Linked_node *node) {
     *(Linked_node **)(&list->node) = node;
 }

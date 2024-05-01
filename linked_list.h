@@ -3,10 +3,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-#define LINKED_ERROR_NO_MEMORY ENOMEM
-#define LINKED_ERROR_LIST_NULL -2
-#define LINKED_ERROR_OUT_BOUNDS EFAULT
-#define LINKED_ERROR_PARAM_NULL EINVAL
+#define EFAULT
 
 typedef struct Linked_node {
     void *data;
@@ -17,18 +14,18 @@ typedef struct Linked_head {
     Linked_node *const node;
 } Linked_head;
 
-Linked_head *linked_create(void);
-Linked_head *linked_push(Linked_head *list, void *data);
-Linked_head *linked_append(Linked_head *list, void *data);
-Linked_head *linked_add_at(Linked_head *list, void *data, size_t position);
-
-void *linked_pop(Linked_head *list);
-void *linked_remove_at(Linked_head *list, size_t position);
-void *linked_get_at(Linked_head *list, size_t position);
+bool linked_create(Linked_head **list);
+bool linked_push(const Linked_head *list, const void *data);
+bool linked_add_at(const Linked_head *list, const void *data, size_t position);
+bool linked_append(const Linked_head *list,const void *data);
+bool linked_pop(const Linked_head *list, void **data);
+bool linked_remove_at(const Linked_head *list, size_t position, void **data);
+bool linked_get_at(const Linked_head *list, size_t position, void **data);
 void linked_delete(Linked_head **list);
-Linked_node *linked_get_node_at(Linked_head *list, size_t position);
-Linked_head *linked_sort(Linked_head **list, bool (*organizer)(void *, void *));
-long linked_search(Linked_head *list, Linked_head **positions, void *search,
-                   bool (*searchFunc)(void *, void *));
-Linked_head *linked_merge(Linked_head *list1, Linked_head *list2);
+bool linked_get_node_at(const Linked_head *list, size_t position,Linked_node **node);
+Linked_head *linked_sort(Linked_head **list, bool (*organizer)(const void *,const void *));
+long linked_search(const Linked_head *list, Linked_head **positions,
+                   const void *search, bool (*searchFunc)(const void *,const void *));
+Linked_head *linked_merge(const Linked_head *list1,
+                                const Linked_head *list2);
 #endif
